@@ -18,7 +18,6 @@ const groupByProvinceId = (data) => {
 };
 
 const getDestination = async (Keyword, province, type) => {
-    console.log("🚀 ~ getDestination ~ type:", type)
     try {
         let sql = 'SELECT * FROM destination';
         const values = [];
@@ -73,14 +72,16 @@ const createDestinationDB = async (Name, latitude, longitude, time_start, time_e
     }
 };
 
-const updateCategoryInDb = async (Id, Name, Image) => {
+const updateDestinationInDb = async (Id, data) => {
     try {
+        const { name, latitude, longitude, time_start, time_end, price, experience, image, province } = data
+
         const sql = `
-            UPDATE public.category
-            SET name=$2, image=$3
-            WHERE id = $1 ;
+            UPDATE public.destination
+            SET name=$1, latitude=$2, longitude=$3, time_start=$4, time_end=$5, price=$6, image=$7, experience=$8, province=$9
+            WHERE  id= $10;
         `;
-        const res = await client.query(sql, [Id, Name, Image]);
+        const res = await client.query(sql, [name, latitude,longitude, time_start, time_end, price, image,experience, province,Id]);
         if (res.rowCount == 1) {
             return {
                 status: 200
@@ -120,4 +121,4 @@ const deleteDestinationInDb = async (id) => {
     }
 };
 
-module.exports = { getDestination, getDestinationDetail, createDestinationDB, deleteDestinationInDb, updateCategoryInDb }
+module.exports = { getDestination, getDestinationDetail, createDestinationDB, deleteDestinationInDb, updateDestinationInDb }

@@ -30,15 +30,15 @@ const createDestination = async (req, res) => {
             res.status(200).json({ status: 210 })
         }
     } catch (err) {
-        console.log("🚀 ~ createDestination ~ err:", err)
         res.status(500).json({ message: err.message })
     }
 }
 const updateDestination = async (req, res) => {
     const { id } = req.params
-    const { name, image } = req.body
+    const data = req.body
+
     try {
-        const resp = await DestinationModel.updateDestinationInDb(id, name, image)
+        const resp = await DestinationModel.updateDestinationInDb(id, data)
         if (resp.status === 200) {
             res.status(200).json({ status: 200 })
         }
