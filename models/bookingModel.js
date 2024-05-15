@@ -237,7 +237,7 @@ const signupBookingDB = async (
 
         if (conflictBooking.rows.length > 0 && conflictBooking.rows[0].status !== 3) {
             const booking = conflictBooking.rows[0];
-            const messsageError = `Impterpreter đã được thuê thời gian này`;
+            const messsageError = `Interpreter đã được thuê thời gian này`;
 
             return {
                 status: 201,

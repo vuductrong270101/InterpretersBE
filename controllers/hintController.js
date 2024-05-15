@@ -59,7 +59,7 @@ const parseDataHint = (queryResult, queryListGameOfHint, listImage) => {
     }
     return Object.values(users);
 }
-const parseDataListHint = (queryResult, queryListGameOfHint, queryCommentCountList) => {
+const parseDataListHint = (queryResult, queryListcategoriesOfHint, queryCommentCountList) => {
     const users = {};
     for (let row of queryResult.rows) {
         const userId = row.id;
@@ -73,17 +73,17 @@ const parseDataListHint = (queryResult, queryListGameOfHint, queryCommentCountLi
                 textShort: row.text_short,
                 star: 4.5,
                 comment: 0,
-                listgame: []
+                listcategories: []
             };
         }
     }
 
-    for (let game of queryListGameOfHint.rows) {
-        if (users[game.id]) {
-            users[game.id].listgame.push({
-                id: game.category_id,
-                name: game.category_name,
-                image: game.image_category
+    for (let categories of queryListcategoriesOfHint.rows) {
+        if (users[categories.id]) {
+            users[categories.id].listcategories.push({
+                id: categories.category_id,
+                name: categories.category_name,
+                image: categories.image_category
             });
         }
     }
@@ -127,13 +127,13 @@ const getHintDetail = async (req, res) => {
     try {
         const id = req.params.id;
         const infoHint = await getUserFromDB(id);
+        console.log("🚀 ~ getHintDetail ~ infoHint:", infoHint)
         const listImage = await getListImageUserFromDB(id);
         const queryListGameOfHint = await getListCategoryFromDb();
         const userList = parseDataHint(infoHint, queryListGameOfHint, listImage);
         res.json(userList);
 
     } catch (error) {
-
         console.error(error);
 
         res.status(500).json({ error: 'Internal server error' });

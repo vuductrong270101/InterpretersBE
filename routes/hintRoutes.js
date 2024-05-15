@@ -7,9 +7,9 @@ const router = express.Router()
 router.get('/', hintController.getHintList)
 // danh sahcs bình luận
 router.get('/feedback/:id', hintController.getHintFeedbackList)
-//  lấy thông tin pgt  
+//  lấy thông tin hint
 router.get('/:id', hintController.getHintDetail)
-// change to role pgt
+// change to role hint
 router.post("/:id", hintController.requestToHint);
 // update request booking
 router.put("/:id", hintController.acceptInfoRequestBooking);
