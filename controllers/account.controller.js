@@ -92,7 +92,6 @@ const accountController = {
         data: response
       });
     } catch (error) {
-      console.log("🚀 ~ getListAccount: ~ error:", error)
       // res.status(error.code).json({ error: error.message });
     }
   },

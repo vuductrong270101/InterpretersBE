@@ -7,11 +7,15 @@ const getAllHintFromDb = async (Type, KeyWord, Category, Rate, Comment) => {
         "user".user_name, 
         "user".hot_hint, 
         "user".image AS image, 
-        "user".text_short
+        "user".text_short,
+        COUNT(booking.hint_id) AS booking_count
         FROM "user"
-        LEFT JOIN CategoryList ON "user".id = CategoryList.user_id
-    WHERE "user".role_id = 2`;
-
+        LEFT JOIN 
+        booking ON "user".id = booking.hint_id
+        WHERE "user".role_id = 2
+        `;
+        // LEFT JOIN CategoryList ON "user".id = CategoryList.user_id
+        
     if (Type == 10) {
         sql += ` AND hot_hint = true`;
     }
@@ -19,33 +23,56 @@ const getAllHintFromDb = async (Type, KeyWord, Category, Rate, Comment) => {
     //     sql += ` AND ("user".hot_hint = false OR "user".hot_hint IS NULL)`;
     // }
     if (KeyWord && KeyWord !== '') {
-        sql += ` AND user_name ILIKE '%${KeyWord}%'`;
+        sql += ` AND user_name ILIKE '%${KeyWord}%' `;
     }
 
     if (Category) {
-        sql += ` AND CategoryList.category_id = ${Category}`;
+        sql += ` AND CategoryList.category_id = ${Category} `;
     }
+    sql += ` 
+    GROUP BY 
+    "user".id, 
+    "user".avatar, 
+    "user".user_name, 
+    "user".hot_hint, 
+    "user".image, 
+    "user".text_short`
     const queryResult = await client.query(sql);
-
     return queryResult;
 }
 const getFeedbackFromDb = async (id) => {
     // lấy danh sách các feedback booking
-    let sql = `SELECT b.id,b.status, b.date, user_id, rate, comment,u.avatar, u.user_name,time_from,
-	b.time_to
+    let sql = `SELECT b.id,b.status, b.date, user_id, rate, comment,u.avatar, u.user_name,
+	b.time
+    FROM public.booking b 
+	INNER JOIN public."user" u ON b.user_id = u.id
+    WHERE hint_id = ${id} 
+    ORDER BY date DESC;
+    `;
+    let sqlDone = `SELECT b.id,b.status, b.date, user_id, rate, comment,u.avatar, u.user_name,
+	b.time
     FROM public.booking b 
 	INNER JOIN public."user" u ON b.user_id = u.id
     WHERE hint_id = ${id} and b.status = 5
     ORDER BY date DESC;
     `;
+
+    let sqlAVG = `SELECT AVG(b.rate) AS avg_rate
+    FROM public.booking b
+    WHERE b.hint_id = ${id} AND b.status = 5;
+    `
     // lấy số lương booking status = 5
-    let sqlStatusDone = `SELECT COUNT(*) FROM public.booking WHERE hint_id = ${id} AND status = 5`
     const queryResult = await client.query(sql);
+    const queryResultDone = await client.query(sqlDone);
+    let sqlStatusDone = `SELECT COUNT(*) FROM public.booking WHERE hint_id = ${id} AND status = 5`
     const queryStatusDoneResult = await client.query(sqlStatusDone);
+    const avgResult = await client.query(sqlAVG);
     if (queryResult.rows) {
         return {
             status: 200,
-            data: queryResult.rows,
+            data: queryResultDone.rows,
+            // count: queryResult.rows.length,
+            avg: avgResult,
             rate: (queryStatusDoneResult.rows[0].count / queryResult.rows.length) * 100
         }
     } else {
@@ -54,11 +81,49 @@ const getFeedbackFromDb = async (id) => {
 }
 const getUserFromDB = async (id) => {
     const sql = `
-    SELECT * ,
-    destination.name AS destination_name
-    FROM public."user"
-    JOIN destination ON "user"."destination_id"::int = destination.id
-    where public."user".id = ${id}  `;
+    SELECT
+    u.id AS id,
+    u.avatar, 
+    u.introduction, 
+    u.user_name, 
+    u.first_name, 
+    u.last_name, 
+    u.gender, 
+    u.phone, 
+    u.province, 
+    u.district, 
+    u.ward, 
+    u.address, 
+    u.hot_hint, 
+    u.status, 
+    u.image AS image, 
+    u.text_short,
+    u.personal_price_session,
+    u.personal_price_day,
+    u.group_price_day,
+    u.group_price_avge,
+    u.group_price_session,
+    u.destination_id,
+    d.name AS destination_name,
+    COUNT(b.hint_id) AS booking_count,
+    AVG(b.rate) AS average_rating
+FROM 
+    public."user" u
+LEFT JOIN 
+    booking b ON u.id = b.hint_id
+LEFT JOIN 
+    destination d ON CAST(u.destination_id AS INTEGER) = d.id
+WHERE 
+    u.id = ${id}
+GROUP BY 
+    u.id, u.avatar, u.introduction, u.user_name, u.first_name, 
+    u.last_name, u.gender, u.phone, u.province, u.district, 
+    u.ward, u.address, u.hot_hint, u.status, u.image, 
+    u.text_short, u.personal_price_session, u.personal_price_day, 
+    u.group_price_day, u.group_price_avge, u.group_price_session, 
+    u.destination_id, d.name;
+`;
+    // JOIN destination ON "user"."destination_id"::int = destination.id
     const queryResult = await client.query(sql);
     return queryResult;
 }

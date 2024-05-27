@@ -7,11 +7,11 @@ const router = express.Router()
 // danh sách lịch sử  booking của 1 user 
 router.get('/user/:id', bookingController.getHistoryBookingUser)
 
-// danh sách yêu cầu booking của pgt
+// danh sách yêu cầu booking của hint
 router.get('/hint/:id', bookingController.getListRequestBooking)
 
-// List  booking  của 1 pgt
-router.post('/pgt/:id', bookingController.getBookingListOfPgt)
+// List  booking  của 1 hint
+router.post('/hint/:id', bookingController.getBookingListOfHint)
 
 // Tạo booking
 router.post('/', bookingController.createBooking)

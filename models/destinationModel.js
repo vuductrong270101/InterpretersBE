@@ -21,9 +21,13 @@ const getDestination = async (Keyword, province, type) => {
     try {
         let sql = 'SELECT * FROM destination';
         const values = [];
+       
         if (province) {
-            sql += ' WHERE province = $1';
+            sql += ' WHERE province = $1 ';
             values.push(`${province}`);
+        }
+        if (Keyword) {
+            sql += `  WHERE "destination".name LIKE '%${Keyword}%'`;
         }
         const res = await client.query(sql, values);
         if (type == 2) {

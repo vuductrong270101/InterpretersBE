@@ -7,18 +7,21 @@ const getBookingDetail = async (id) => {
         const res = await client.query(
             `SELECT
             b.id AS id,
-            b.rate,
-            b.note,
-            b.hint_id ,
-            b.comment,
-            u.user_name AS pgt_name,
+            u.user_name AS hint_name,
+            b.hint_id,
             b.user_id as user_id,
             u2.user_name AS user_name,
             b.date,
             b.price,
             b.status AS status,
-            b.time_from,
-            b.time_to
+            b.time,
+            b.cost,
+            b.quantity,
+            b.note,
+            b.destination_id,
+            b.destination,
+            b.description,
+            b.type_travel
         FROM
             booking b
         JOIN
@@ -81,7 +84,7 @@ const getListBookingOfUserFromDb = async (id) => {
     }
 }
 
-const getRequestBookingOfPGTFromDb = async (id, type) => {
+const getRequestBookingOfHINTromDb = async (id, type) => {
     try {
         // c.image AS category_link,
         // b.category_id,
@@ -161,6 +164,7 @@ const getListBookingFromDb = async (Keyword, DateCreate, DateBooking) => {
                 b.date,
                 b.quantity,
                 b.note,
+                b.created_at,
                 b.destination_id,
                 b.destination,
                 b.type_travel
@@ -224,61 +228,78 @@ const signupBookingDB = async (
             SELECT
             id,
             hint_id,
+            time,
             status
             FROM
             booking
             WHERE
             hint_id = $1
-            AND date = $2
-            AND time =$3
-            ;
-        `, [hintId, date, time]);
+            AND date = $2;
+        `, [hintId, date]);
+        console.log("🚀 ~ conflictBooking:", conflictBooking.rows)
+        console.log('time', time)
         // Kiểm tra xem có xung đột hay không
+        let conflict = false;
+        let messsageError = '';
 
-        if (conflictBooking.rows.length > 0 && conflictBooking.rows[0].status !== 3) {
-            const booking = conflictBooking.rows[0];
-            const messsageError = `Interpreter đã được thuê thời gian này`;
-
+        for (let booking of conflictBooking.rows) {
+            if (booking.time === '7') {
+                conflict = true;
+                messsageError = `Interpreter đã được thuê thời gian này `;
+                break;
+            } else if (time.toString() !== '7' && booking.time === time.toString()) {
+                conflict = true;
+                messsageError = `Interpreter đã được thuê thời gian này `;
+                break;
+            } else if (time.toString() === '7' && booking.time !== '7') {
+                conflict = true;
+                messsageError = `Interpreter đã được thuê thời gian này `;
+                break;
+            }
+        }
+        if (conflict) {
             return {
                 status: 201,
                 message: "Lịch sử booking xung đột với lượt thuê mới.",
                 messsageError: messsageError,
             };
+        } 
+        else {
+            const res = await client.query(`
+            INSERT INTO public.booking (
+                user_id, hint_id, date, category_id, cost, price, quantity, description, destination_id, destination, type_travel, time
+            ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            RETURNING id; 
+             `, [
+                userId,
+                hintId,
+                date,
+                category,
+                cost,
+                price,
+                quantity,
+                note,
+                destination_id,
+                destination,
+                typeTravel,
+                time
+            ]);
+            if (res.rows.length > 0) {
+                return {
+                    status: 200,
+                    message: "Đăng kí booking thành công.",
+                    bookingId: res.rows  // Trả về ID của booking
+                };
+            } else {
+                return {
+                    status: 400,
+                    message: "Hệ thống lỗi",
+                };
+            }
         }
-
         //  tạo booking
-        const res = await client.query(`
-        INSERT INTO public.booking (
-            user_id, hint_id, date, category_id, cost, price, quantity, description, destination_id, destination, type_travel, time
-        ) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        RETURNING id; 
-         `, [
-            userId,
-            hintId,
-            date,
-            category,
-            cost,
-            price,
-            quantity,
-            note,
-            destination_id,
-            destination,
-            typeTravel,
-            time
-        ]);
-        if (res.rows.length > 0) {
-            return {
-                status: 200,
-                message: "Đăng kí booking thành công.",
-                bookingId: res.rows  // Trả về ID của booking
-            };
-        } else {
-            return {
-                status: 400,
-                message: "Hệ thống lỗi",
-            };
-        }
+
     } catch (error) {
         // Xử lý lỗi truy vấn
         console.error(error);
@@ -288,10 +309,10 @@ const signupBookingDB = async (
 const checkTimeBookingPgt = async (pgtId, date, timeStart, timeEnd) => {
     try {
         // Kiểm tra xem có pgt tồn tại không
-        const pgtIdCheck = await client.query(`
+        const hintIdCheck = await client.query(`
         SELECT * FROM public."user" WHERE id = $1 AND role_id =2 ;`,
             [pgtId]);
-        if (pgtIdCheck.rows.length === 0) {
+        if (hintIdCheck.rows.length === 0) {
             return {
                 status: 400,
                 message: "Không tồn tại Impterpreter"
@@ -453,7 +474,7 @@ const getChartInDb = async (Year, Month, Date) => {
         throw error;
     }
 };
-const getTopBookingUsersByDuration = async (Year, Month, Date) => {
+const getTopBookingUsersByQuantity = async (Year, Month, Date) => {
     try {
         let query = '';
         let queryParams = [];
@@ -472,27 +493,45 @@ const getTopBookingUsersByDuration = async (Year, Month, Date) => {
         }
         let whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
         query = `
-        SELECT 
-        b.hint_id, 
-        u.user_name, 
-        u.avatar, 
-        SUM(EXTRACT(EPOCH FROM b.time_to) - EXTRACT(EPOCH FROM b.time_from))/60 as total_minutes,
-        SUM(EXTRACT(EPOCH FROM b.time_to) - EXTRACT(EPOCH FROM b.time_from))/3600 as total_hours
-        FROM public."booking" b
-        INNER JOIN public."user" u ON b.hint_id = u.id
-        ${whereClause}
-        GROUP BY b.hint_id, u.user_name, u.avatar
-        ORDER BY total_minutes DESC
-        LIMIT 10;
-        `;
+        SELECT
+        u.id AS hintId,
+        u.user_name,
+        u.id,
+        u.introduction,
+        u.avatar,
+        COUNT(b.id) AS total_bookings
+        FROM
+            public."user" u
+        INNER JOIN
+            public."booking" b ON u.id = b.hint_id
+            ${whereClause}
+        GROUP BY
+            u.id, u.user_name, u.avatar
+        ORDER BY
+            total_bookings DESC
+        LIMIT
+            10;
+         `;
         const res = await client.query(query, queryParams);
-        if (res.rows) {
-            return res.rows.map(row => ({
-                hintId: row.hintId,
-                user_name: row.user_name,
-                avatar: row.avatar,
-                total_duration_minutes: row.total_hours
-            }));
+        const listHint = res.rows
+
+
+        // Tạo mảng các lời hứa từ hàm getStarHint
+        const promises = listHint.map(row => getStarHint(row.id));
+        // Đợi tất cả các lời hứa hoàn thành
+        const stars = await Promise.all(promises);
+        const newList = listHint.map((row, index) => ({
+            id: row.id,
+            introduction: row.introduction,
+            hintId: row.hintId,
+            user_name: row.user_name,
+            avatar: row.avatar,
+            total_bookings: row.total_bookings,
+            star: stars[index]
+        }));
+
+        if (listHint) {
+            return newList
         } else {
             return null;
         }
@@ -501,7 +540,56 @@ const getTopBookingUsersByDuration = async (Year, Month, Date) => {
         throw error;
     }
 };
-
+const getTotalCountValueBooking = async (Year, Month, Date) => {
+    try {
+        let query = '';
+        let queryParams = [];
+        let whereConditions = [];
+        if (Year) {
+            whereConditions.push(`EXTRACT(YEAR FROM b.date) = $1`);
+            queryParams.push(Year);
+        }
+        if (Month) {
+            whereConditions.push(`EXTRACT(MONTH FROM b.date) = $2`);
+            queryParams.push(Month);
+        }
+        if (Date) {
+            whereConditions.push(`EXTRACT(DAY FROM b.date) = $3`);
+            queryParams.push(Date);
+        }
+        let whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+        query = `
+        SELECT
+        COUNT(b.id) AS total,
+        SUM(price) as total_price
+        FROM
+        public."booking" b
+        ${whereClause};
+                 `;
+        const res = await client.query(query, queryParams);
+        if (res.rows) {
+            return res.rows
+        } else {
+            return null;
+        }
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
+const getStarHint = async (userId) => {
+    try {
+        const sql = `SELECT AVG(rate) AS average_star
+        FROM public.booking
+            WHERE hint_id = $1
+        `;
+        const result = await client.query(sql, [userId]);
+        return parseInt(result.rows[0].average_star)// Assuming there is only one wallet per user
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
 // Function to get user's wallet information by userId
 const getWalletByUserId = async (userId) => {
     try {
@@ -524,12 +612,13 @@ module.exports = {
     signupBookingDB,
     getListBookingOfUserFromDb,
     updateBookingToDB,
-    getRequestBookingOfPGTFromDb,
+    getRequestBookingOfHINTromDb,
     getBookingDetail,
     deleteBookingInDB,
     getListBookingFromDb,
     checkTimeBookingPgt,
     getChartInDb,
-    getTopBookingUsersByDuration,
-    getWalletByUserId
+    getTopBookingUsersByQuantity,
+    getWalletByUserId,
+    getTotalCountValueBooking
 }

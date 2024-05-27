@@ -10,10 +10,10 @@ const getAllPostInDb = async (data) => {
         sql += `WHERE p.user_id = ${data.user_id} `
     }
     if (data.status) {
-        sql += `AND p.status = ${data.status}`
+        sql += ` AND p.status = ${data.status}`
     }
     if (data.Keyword) {
-        sql += `AND p.title LIKE '%${data.Keyword}%'`;
+        sql += ` AND p.title LIKE '%${data.Keyword}%'`;
     }
     if (data.date) {
         const formattedDate = new Date(data.date).toISOString().split('T')[0]; // Lấy chỉ ngày
@@ -28,7 +28,7 @@ const getAllPostInDb = async (data) => {
     }
 }
 const getPostInDb = async (id) => {
-    let sql = `SELECT p.id ,p.image, p.user_id,p.create_at, p.title, p.content, u.first_name, u.last_name
+    let sql = `SELECT p.id ,p.image,p.status, p.user_id,p.create_at, p.title, p.content, u.first_name, u.last_name
     FROM public."post" p
    INNER JOIN public."user" u ON p.user_id = u.id
    WHERE p.id = $1`;

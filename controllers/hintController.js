@@ -40,8 +40,8 @@ const parseDataHint = (queryResult, queryListGameOfHint, listImage) => {
                 follower: row?.follower,
                 introduction: row?.introduction,
                 status: row?.status,
-                countRental: 6280,
-                countComment: 2323,
+                countRental: row.booking_count,
+                rate: row.average_rating,
                 listImage: listImage,
                 listgame: [],
 
@@ -66,12 +66,13 @@ const parseDataListHint = (queryResult, queryListcategoriesOfHint, queryCommentC
         if (!users[userId]) {
             users[userId] = {
                 id: userId,
+                booking_count: row.booking_count,
                 username: row.user_name,
                 avatar: row.avatar,
                 hot_hint: row?.hot_hint,
                 image: row.image,
                 textShort: row.text_short,
-                star: 4.5,
+                star: 0,
                 comment: 0,
                 listcategories: []
             };
@@ -90,6 +91,7 @@ const parseDataListHint = (queryResult, queryListcategoriesOfHint, queryCommentC
     for (let comment of queryCommentCountList.rows) {
         if (users[comment.id]) {
             users[comment.id].comment = comment.booking_count
+            users[comment.id].average_rating = comment.average_rating
         }
     }
     return Object.values(users);
@@ -127,7 +129,6 @@ const getHintDetail = async (req, res) => {
     try {
         const id = req.params.id;
         const infoHint = await getUserFromDB(id);
-        console.log("🚀 ~ getHintDetail ~ infoHint:", infoHint)
         const listImage = await getListImageUserFromDB(id);
         const queryListGameOfHint = await getListCategoryFromDb();
         const userList = parseDataHint(infoHint, queryListGameOfHint, listImage);

@@ -29,7 +29,7 @@ const getHistoryBookingUser = async (req, res) => {
 const getListRequestBooking = async (req, res) => {
     try {
         const id = req.params.id;
-        const listBooking = await bookingModel.getRequestBookingOfPGTFromDb(id);
+        const listBooking = await bookingModel.getRequestBookingOfHINTromDb(id);
 
         if (listBooking !== null) {
             res.json({
@@ -49,7 +49,7 @@ const getListRequestBooking = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
-const getBookingListOfPgt = async (req, res) => {
+const getBookingListOfHint = async (req, res) => {
     try {
         const id = req.params.id;
         const listBooking = await bookingModel.getListBookingForAccIdFromDb(id);
@@ -116,15 +116,7 @@ const createBooking = async (req, res) => {
         let date = moment(data.date).tz('Asia/Ho_Chi_Minh').format();
         const note = (data.note);
         // Retrieve user's wallet information
-        const userWallet = await bookingModel.getWalletByUserId(data.userId);
-        // Check if the balance is sufficient for the booking
-        const bookingAmount = parseInt(data?.price) || 0;
-        if (!userWallet || userWallet.money_balance < bookingAmount) {
-            return res.status(220).json({ status: 220, message: 'Số dư trong ví không đủ' });
-        }else{
-            await updateMoneyWallet(data.userId, bookingAmount,false);
-            await updatePaymentHistory(data.userId, bookingAmount);
-        }
+
 
         const response = await bookingModel.signupBookingDB(
             data.userId,
@@ -140,6 +132,18 @@ const createBooking = async (req, res) => {
             data.typeTravel,
             data.time,
         );
+
+        if (response.status === 200) {
+            const userWallet = await bookingModel.getWalletByUserId(data.userId);
+            // Check if the balance is sufficient for the booking
+            const bookingAmount = parseInt(data?.cost) || 0;
+            if (!userWallet || userWallet.money_balance < bookingAmount) {
+                return res.status(220).json({ status: 220, message: 'Số dư trong ví không đủ' });
+            } else {
+                await updateMoneyWallet(data.userId, bookingAmount, false);
+                await updatePaymentHistory(data.userId, bookingAmount);
+            }
+        }
         res.json({
             status: response?.status,
             message: response.message,
@@ -200,12 +204,12 @@ const updateBooking = async (req, res) => {
     try {
         const { id } = req.params;
         const { type } = req.query;
-        const { rate,user_name, comment, pgt_id,amount } = req.body;
+        const { rate, user_name, comment, hint_id, amount } = req.body;
 
         const response = await bookingModel.updateBookingToDB(id, type, rate, comment);
-        if ( parseInt(type) == 5){
-            const reps = await updatePaymentHistory(pgt_id, amount,20,user_name);
-            const result = await updateMoneyWallet(pgt_id, amount);
+        if (parseInt(type) == 5) {
+            const reps = await updatePaymentHistory(hint_id, amount, 20, user_name);
+            const result = await updateMoneyWallet(hint_id, amount);
         }
         if (response !== null) {
             res.json({
@@ -277,9 +281,12 @@ const getChart = async (req, res) => {
     const { Year, Month, Date } = req.query
     try {
         const chartResult = await bookingModel.getChartInDb(Year, Month, Date);
+        const countResult = await bookingModel.getTotalCountValueBooking(Year, Month, Date);
+
         if (chartResult !== null) {
             res.json({
                 status: 200,
+                total: countResult,
                 data: chartResult
             });
         } else {
@@ -298,7 +305,7 @@ const getChart = async (req, res) => {
 const getTopBookingPgt = async (req, res) => {
     const { Year, Month, Date } = req.query
     try {
-        const chartResult = await bookingModel.getTopBookingUsersByDuration(Year, Month, Date);
+        const chartResult = await bookingModel.getTopBookingUsersByQuantity(Year, Month, Date);
         if (chartResult !== null) {
             res.json({
                 status: 200,
@@ -318,7 +325,7 @@ const getTopBookingPgt = async (req, res) => {
     }
 };
 module.exports = {
-    getBookingListOfPgt,
+    getBookingListOfHint,
     getHistoryBookingUser,
     getListRequestBooking,
     createBooking,

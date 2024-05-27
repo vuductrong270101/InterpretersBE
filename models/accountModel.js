@@ -354,11 +354,13 @@ const getListCategoryFromDb = async (Type) => {
 };
 
 const getCommentCountListFromDb = async (Type) => {
-    let sqlComment = `SELECT hint_id as id, COUNT(*) AS booking_count
+    let sqlComment = `SELECT 
+    hint_id as id, COUNT(*) AS booking_count,
+    AVG(booking.rate) AS average_rating
     FROM public.booking
-    WHERE status = 5
     GROUP BY hint_id;
-   `;
+    `;
+    // WHERE status = 5
     const queryResult = await client.query(sqlComment);
     return queryResult;
 };

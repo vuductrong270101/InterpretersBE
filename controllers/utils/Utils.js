@@ -1,7 +1,6 @@
 const nodemailer = require("nodemailer");
 
 const sendEmail = async (email, subject, message) => {
-  console.log("🚀 ~ file: Utils.js:4 ~ sendEmail ~ email:", email)
   try {
     let transporter = nodemailer.createTransport({
       host: "smtp.gmail.com", // SMTP server address (usually mail.your-domain.com)

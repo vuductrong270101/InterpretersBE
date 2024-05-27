@@ -164,7 +164,7 @@ const updatePaymentHistory = async (user_id, amountMoney,type = 0,user_name) => 
     try {
         let description = '';
         if ( type == 0 ){
-             description = 'Thanh toán Booking Pgt';
+             description = 'Thanh toán Booking';
         }
         if ( type == 10 ){
              description = 'Hoàn tiền do hủy Booking';
