@@ -114,10 +114,10 @@ const getRequestBookingOfHINTromDb = async (id, type) => {
                 "user" u2 ON b.user_id = u2.id
             WHERE
                 b.hint_id = $1
-                AND b.status != 4
-            ORDER BY b.created_at DESC`,
-            [id]
-        );
+                ORDER BY b.created_at DESC`,
+                [id]
+            );
+            // AND b.status != 4
         if (res.rows) {
             return res.rows;
         }
@@ -487,10 +487,6 @@ const getTopBookingUsersByQuantity = async (Year, Month, Date) => {
             whereConditions.push(`EXTRACT(MONTH FROM b.date) = $2`);
             queryParams.push(Month);
         }
-        if (Date) {
-            whereConditions.push(`EXTRACT(DAY FROM b.date) = $3`);
-            queryParams.push(Date);
-        }
         let whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
         query = `
         SELECT
@@ -499,7 +495,8 @@ const getTopBookingUsersByQuantity = async (Year, Month, Date) => {
         u.id,
         u.introduction,
         u.avatar,
-        COUNT(b.id) AS total_bookings
+        COUNT(b.id) AS total_bookings,
+        SUM(cost) AS total_cost
         FROM
             public."user" u
         INNER JOIN
@@ -527,6 +524,7 @@ const getTopBookingUsersByQuantity = async (Year, Month, Date) => {
             user_name: row.user_name,
             avatar: row.avatar,
             total_bookings: row.total_bookings,
+            total_cost: row.total_cost,
             star: stars[index]
         }));
 
@@ -561,7 +559,7 @@ const getTotalCountValueBooking = async (Year, Month, Date) => {
         query = `
         SELECT
         COUNT(b.id) AS total,
-        SUM(price) as total_price
+        SUM(cost) as total_price
         FROM
         public."booking" b
         ${whereClause};

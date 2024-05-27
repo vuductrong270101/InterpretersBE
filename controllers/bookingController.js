@@ -205,11 +205,11 @@ const updateBooking = async (req, res) => {
         const { id } = req.params;
         const { type } = req.query;
         const { rate, user_name, comment, hint_id, amount } = req.body;
-
+        const money = amount * 0.8
         const response = await bookingModel.updateBookingToDB(id, type, rate, comment);
         if (parseInt(type) == 5) {
-            const reps = await updatePaymentHistory(hint_id, amount, 20, user_name);
-            const result = await updateMoneyWallet(hint_id, amount);
+            const reps = await updatePaymentHistory(hint_id, money, 20, user_name);
+            const result = await updateMoneyWallet(hint_id, money);
         }
         if (response !== null) {
             res.json({
